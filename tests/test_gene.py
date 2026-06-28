@@ -49,3 +49,65 @@ def test_create_gene():
 def test_get_nonexistent_gene():
     response = client.get("/genes/9999")
     assert response.status_code == 404
+
+def test_update_gene():
+    #Create a test gene
+    gene_data = {
+        "gene_symbol": "TP53",
+        "gene_name": "Tumour Protein P53",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    }
+    create_response = client.post("/genes/", json=gene_data)
+    gene_id = create_response.json()["id"]
+
+    #Update the test gene
+    update_data = {
+        "gene_name": "Tumour Suppressor P53"
+    }
+    response = client.put(f"/genes/{gene_id}", json=update_data)
+    assert response.status_code == 200
+    #Check that the field that is changed, was changed, and other fields were not changed.
+    assert response.json()["gene_name"] == "Tumour Suppressor P53"
+    assert response.json()["gene_symbol"] == "TP53"
+
+def test_delete_gene():
+    # Create test gene to delete
+    gene_data = {
+        "gene_symbol": "EGFR",
+        "gene_name": "Epidermal Growth Factor Receptor",
+        "organism": "Homo sapiens"
+    }
+
+    create_response = client.post("/genes/", json=gene_data)
+    gene_id = create_response.json()["id"]
+
+    #Delete test gene
+    response = client.delete(f"/genes/{gene_id}")
+    assert response.status_code==204
+
+    #Confirm test gene is deleted
+    response = client.delete(f"/genes/{gene_id}")
+    assert response.status_code==404
+
+def test_search_genes():
+    # Create two versions of test gene (one version for one organism)
+    client.post("/genes/", json={
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    })
+    client.post("/genes/", json={
+        "gene_symbol": "Brca1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Mus musculus",
+        "chromosome": "11"
+    })
+
+    # Search test gene by organism
+    response = client.get("/genes/search/?organism=Homo")
+    assert response.status_code==200
+    results = response.json()
+    assert len(results) == 1
+    assert results[0]["organism"] == "Homo sapiens"

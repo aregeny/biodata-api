@@ -56,3 +56,31 @@ def get_gene(gene_id: int, db: Session = Depends(get_db)):
     if gene is None:
         raise HTTPException(status_code=404, detail="Gene not found")
     return gene
+
+@router.put("/{gene_id}", response_model=GeneResponse)
+def update_gene(gene_id: int, gene_update: GeneUpdate, db: Session = Depends(get_db)):
+    gene = db.query(models.Gene).filter(models.Gene.id == gene_id).first()
+    if gene is None:
+        raise HTTPException(status_code=404, detail="Gene not found")
+    for field, value in gene_update.model_dump(exclude_unset=True).items():
+        setattr(gene, field, value)
+    db.commit()
+    db.refresh(gene)
+    return gene
+
+@router.delete("/{gene_id}", status_code=204)
+def delete_gene(gene_id: int, db: Session = Depends(get_db)):
+    gene = db.query(models.Gene).filter(models.Gene.id == gene_id).first()
+    if gene is None:
+        raise HTTPException(status_code=404, detail="Gene not found")
+    db.delete(gene)
+    db.commit()
+
+@router.get("/search/", response_model=List[GeneResponse])
+def search_genes(organism: Optional[str] = None, chromosome: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Gene)
+    if organism:
+        query = query.filter(models.Gene.organism.ilike(f"%{organism}%"))
+    if chromosome:
+        query = query.filter(models.Gene.chromosome == chromosome)
+    return query.all()
