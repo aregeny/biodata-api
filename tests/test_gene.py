@@ -7,7 +7,7 @@ from app.database import get_db, Base
 from app import models
 import pytest
 
-SQLALCHEMY_TEST_DATABASE_URL = "postgresql://postgres:password@localhost:5432/biodata"
+SQLALCHEMY_TEST_DATABASE_URL = "postgresql://postgres:password@localhost:5432/biodata_test"
 
 engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
