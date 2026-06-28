@@ -1,5 +1,10 @@
 from fastapi import FastAPI
 from app.routers import genes #Day two addition
+# Day three addition
+from app.database import engine
+from app import models
+
+models.Base.metadata.create_all(bind=engine) # Day three addition
 
 app = FastAPI(
     title="Biodata API",

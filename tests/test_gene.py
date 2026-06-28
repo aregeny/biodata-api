@@ -1,6 +1,33 @@
 from fastapi.testclient import TestClient
 from app.main import app
+#Fixes due to Day Three additions
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import get_db, Base
+from app import models
+import pytest
 
+SQLALCHEMY_TEST_DATABASE_URL = "postgresql://postgres:password@localhost:5432/biodata"
+
+engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+@pytest.fixture(autouse=True)
+def reset_db():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db   
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
+
+#Beyond is previous Day 2
 client = TestClient(app)
 
 def test_root():
