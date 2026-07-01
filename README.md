@@ -26,7 +26,7 @@ Currently stopped. Contact me or see "Running Locally" to run the fullstack.
 ## Running locally
 git clone https://github.com/aregeny/biodata-api  
 cd biodata-api  
-docker compose up --build
+docker compose up --build  
 
 ## Running Test Suite
 source venv/bin/activate  
