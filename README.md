@@ -23,25 +23,65 @@ Currently stopped. Contact me or see "Running Locally" to run the fullstack.
 - Docker / Docker Compose
 - AWS (ECR, ECS with Fargate, RDS)
 
-## Running locally
+## Architecture
+- REST API build with FastAPI and Pydantic for request validation
+- PostgreSQL database with SQLAlchemy ORM
+- Containerized with Docker, orchestrated locally with Docker Compose
+- Deployed to AWS ECS Fargate with RDS PostgreSQL
+- Separated test and development databases for clean test isolation
+
+## Running Locally 
+
+### Prerequisities
+- Docker Desktop
+- Python 3.12
+
+### Setup
 git clone https://github.com/aregeny/biodata-api  
 cd biodata-api  
 docker compose up --build  
+
+The API will be available to view locally at http://localhost:8000/docs
 
 ## Running Test Suite
 source venv/bin/activate  
 pytest tests/ -v
 
 ## API Endpoints
-- GET /genes/  -> List all genes in database
-- POST /genes/ -> create a gene & add to database
-- GET /genes/{id} -> retrieve a gene by ID
-- PUT /genes/{id} -> update a specific gene
-- DELETE /genes/{id} -> delete a gene
-- GET /genes/search/ -> return genes by filtering for organism name or chromosome number
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /genes/ | List all genes in database |
+| POST | /genes/ | Create a gene, then add to database |
+| GET | /genes/{id} | Retrieve a single gene by ID |
+| PUT | /genes/{id} | Update a single gene |
+| DELETE | /genes/{id} | Delete a single gene by ID |
+| GET | /genes/search/ | Filter genes in database by organism or chromosome |
+
+## Example Request
+
+```bash
+curl -X POST "http://localhost:8000/genes/" \
+    -H "Content-Type: application/json" |
+    -d '{
+        "gene_symbol" :  "BRCA1",
+        "gene_name": "Breast Cancer Type 1 Susceptibility Protein",
+        "organism": "Homo sapiens",
+        "chromosome": "17",
+        "description": "Tumour suppressor gene involved in DNA double-strand break repair."
+    }
+```
+
+## Security Nodes
+- Credentials managed via environmental variables, never hardcoded
+- Test database isolated from development database
+- RDS accessible only from ECS Security Group
 
 ## Future Improvements
 
-- Expand test suite for more rigourous testing of endpoints
+- Move credentials to AWS Secrets Manager
 - Implement an application load balancer with a fixed DNS to achieve a static public IP
 - Implement an application load balancer and a domain name for HTTPS implementation
+- Add authentication and authorization for users
+- Add pagination to list endpoints for better UI experience
+- Expand to additional biological data types.

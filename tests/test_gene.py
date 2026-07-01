@@ -46,6 +46,15 @@ def test_create_gene():
     assert response.status_code == 201
     assert response.json()["gene_symbol"] == "BRCA1"
 
+def test_create_gene_with_missing_required_field():
+    # gene_symbol is required - omitting it should return 422
+    gene_data = {
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+    } 
+    response = client.post("/genes/", json=gene_data)
+    assert response.status_code == 422
+
 def test_get_nonexistent_gene():
     response = client.get("/genes/9999")
     assert response.status_code == 404
@@ -71,6 +80,10 @@ def test_update_gene():
     assert response.json()["gene_name"] == "Tumour Suppressor P53"
     assert response.json()["gene_symbol"] == "TP53"
 
+def test_update_non_existent_gene():
+    response = client.put("/genes/9999", json={"gene_name": "Updated"})
+    assert response.status_code == 404
+
 def test_delete_gene():
     # Create test gene to delete
     gene_data = {
@@ -89,6 +102,10 @@ def test_delete_gene():
     #Confirm test gene is deleted
     response = client.delete(f"/genes/{gene_id}")
     assert response.status_code==404
+
+def test_delete_non_existent_gene():
+    response = client.delete("/genes/9999")
+    assert response.status_code == 404
 
 def test_search_genes():
     # Create two versions of test gene (one version for one organism)
@@ -111,3 +128,22 @@ def test_search_genes():
     results = response.json()
     assert len(results) == 1
     assert results[0]["organism"] == "Homo sapiens"
+
+def test_search_by_chromosome():
+    client.post("/genes/", json={
+        "gene_symbol": "TP53",
+        "gene_name": "Tumour Protein P53",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    })
+    client.post("/genes/", json={
+        "gene_symbol": "Brca1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Mus musculus",
+        "chromosome": "11"
+    })
+    response = client.get("/genes/search/?chromosome=17")
+    assert response.status_code==200
+    results = response.json()
+    assert len(results) == 1
+    assert all(g["chromosome"] == "17" for g in results)
