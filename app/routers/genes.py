@@ -1,33 +1,5 @@
-# from fastapi import APIRouter, HTTPException
-# from app.schemas import GeneCreate, GeneResponse
-# from typing import List, Optional
 
-# router = APIRouter(prefix="/genes", tags=["genes"])
-
-# genes_db: List[dict] = []
-# counter = 1
-
-# @router.get("/", response_model=List[GeneResponse])
-# def get_genes():
-#     return genes_db
-
-# @router.post("/", response_model=GeneResponse, status_code=201)
-# def create_gene(gene: GeneCreate):
-#     global counter
-#     new_gene = gene.model_dump()
-#     new_gene["id"] = counter
-#     counter += 1
-#     genes_db.append(new_gene)
-#     return new_gene
-
-# @router.get("/{gene_id}", response_model=GeneResponse)
-# def get_gene(gene_id: int):
-#     for gene in genes_db:
-#         if gene["id"] == gene_id:
-#             return gene
-#     raise HTTPException(status_code=404, detail="Gene not found")
-
-# Above is day two, below is day three 
+# Day three generated code
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -39,14 +11,18 @@ from typing import List, Optional
 router = APIRouter(prefix="/genes", tags=["genes"])
 
 @router.get("/", response_model=List[GeneResponse])
-def get_genes(db: Session = Depends(get_db)):
-    return db.query(models.Gene).all()
+def get_genes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return db.query(models.Gene).offset(skip).limit(limit).all()
 
 @router.post("/", response_model=GeneResponse, status_code=201)
 def create_gene(gene: GeneCreate, db: Session = Depends(get_db)):
     db_gene = models.Gene(**gene.model_dump())
     db.add(db_gene)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Gene symbol already exists")
     db.refresh(db_gene)
     return db_gene
 
@@ -77,10 +53,10 @@ def delete_gene(gene_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 @router.get("/search/", response_model=List[GeneResponse])
-def search_genes(organism: Optional[str] = None, chromosome: Optional[str] = None, db: Session = Depends(get_db)):
+def search_genes(organism: Optional[str] = None, chromosome: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     query = db.query(models.Gene)
     if organism:
         query = query.filter(models.Gene.organism.ilike(f"%{organism}%"))
     if chromosome:
         query = query.filter(models.Gene.chromosome == chromosome)
-    return query.all()
+    return query.offset(skip).limit(limit).all()

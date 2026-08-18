@@ -9,7 +9,7 @@ load_dotenv() # reads .env file and makes contents available as environment vari
 DATABASE_URL = os.getenv("DATABASE_URL") # Reads DB connection string from environment
 
 # create the SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
@@ -20,5 +20,8 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

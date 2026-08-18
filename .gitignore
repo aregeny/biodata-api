@@ -4,3 +4,5 @@ __pycache__/
 .env
 *.egg-info/
 .pytest_cache/
+reset_dev_db.py
+In trying to make my ECS cluster.docx
