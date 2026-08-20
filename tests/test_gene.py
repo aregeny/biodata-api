@@ -6,8 +6,12 @@ from sqlalchemy.orm import sessionmaker
 from app.database import get_db, Base
 from app import models
 import pytest
+import os
 
-SQLALCHEMY_TEST_DATABASE_URL = "postgresql://postgres:password@localhost:5432/biodata_test"
+SQLALCHEMY_TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql://postgres:password@localhost:5432/biodata_test"
+)
 
 engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -17,6 +21,25 @@ def reset_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+
+@pytest.fixture
+def sample_gene_brac1_homo_sapiens():
+    return {
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+        "chromosome": "17",
+        "description": "Tumor suppressor gene"
+    }
+
+@pytest.fixture
+def sample_gene_brac1_mus_musculus():
+    return {
+        "gene_symbol": "BRCA1",  # same symbol
+        "gene_name": "Breast Cancer 1",
+        "organism": "Mus musculus",  # different organism
+        "chromosome": "11"
+    }
 
 def override_get_db():
     db = TestingSessionLocal()
@@ -34,42 +57,31 @@ def test_root():
     response = client.get("/")
     assert response.status_code == 200
 
-def test_duplicate_gene_symbol_same_organism_rejected():
+def test_search_route_matches_before_id_route():
+    response = client.get("/genes/search/?organism=Homo")
+    assert response.status_code == 200
+    # If /{gene_id} matched first and "search" failed int parsing without
+    # a working fallthrough, this would instead return 422
+
+def test_duplicate_gene_symbol_same_organism_rejected(sample_gene_brac1_homo_sapiens):
     # Arrange
-    gene_data = {
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Homo sapiens",
-        "chromosome": "17"
-    }
-    first_response = client.post("/genes/", json=gene_data)
+    
+    first_response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
     assert first_response.status_code == 201  # sanity check the first insert worked
 
     # Act
-    second_response = client.post("/genes/", json=gene_data)  # exact same data
+    second_response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens)  # exact same data
 
     # Assert
     assert second_response.status_code == 409
 
 
-def test_same_gene_symbol_different_organism_allowed():
+def test_same_gene_symbol_different_organism_allowed(sample_gene_brac1_homo_sapiens, sample_gene_brac1_mus_musculus):
     # Arrange
-    human_gene = {
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Homo sapiens",
-        "chromosome": "17"
-    }
-    client.post("/genes/", json=human_gene)
+    client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
 
     # Act
-    mouse_gene = {
-        "gene_symbol": "BRCA1",  # same symbol
-        "gene_name": "Breast Cancer 1",
-        "organism": "Mus musculus",  # different organism
-        "chromosome": "11"
-    }
-    response = client.post("/genes/", json=mouse_gene)
+    response = client.post("/genes/", json=sample_gene_brac1_mus_musculus)
 
     # Assert
     assert response.status_code == 201  # should succeed, not conflict
@@ -92,15 +104,8 @@ def test_failed_duplicate_insert_does_not_corrupt_table():
     matching = [g for g in all_genes if g["gene_symbol"] == "TP53" and g["organism"] == "Homo sapiens"]
     assert len(matching) == 1
 
-def test_create_gene():
-    gene_data = {
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Homo sapiens",
-        "chromosome": "17",
-        "description": "tumor suppressor gene"
-    }
-    response = client.post("/genes/", json=gene_data)
+def test_create_gene(sample_gene_brac1_homo_sapiens):
+    response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
     assert response.status_code == 201
     assert response.json()["gene_symbol"] == "BRCA1"
 
@@ -113,22 +118,10 @@ def test_create_gene_with_missing_required_field():
     response = client.post("/genes/", json=gene_data)
     assert response.status_code == 422
 
-def test_update_gene_to_duplicate_organism_rejected():
+def test_update_gene_to_duplicate_organism_rejected(sample_gene_brac1_homo_sapiens, sample_gene_brac1_mus_musculus):
     # Arrange — two genes, same symbol, different organism
-    gene_a = {
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Homo sapiens",
-        "chromosome": "17"
-    }
-    gene_b = {
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Mus musculus",
-        "chromosome": "11"
-    }
-    client.post("/genes/", json=gene_a)
-    create_b_response = client.post("/genes/", json=gene_b)
+    client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
+    create_b_response = client.post("/genes/", json=sample_gene_brac1_mus_musculus)
     gene_b_id = create_b_response.json()["id"]
 
     # Act — try to update gene_b's organism to collide with gene_a
@@ -193,20 +186,10 @@ def test_delete_non_existent_gene():
     response = client.delete("/genes/9999")
     assert response.status_code == 404
 
-def test_search_genes():
+def test_search_genes(sample_gene_brac1_homo_sapiens, sample_gene_brac1_mus_musculus):
     # Create two versions of test gene (one version for one organism)
-    client.post("/genes/", json={
-        "gene_symbol": "BRCA1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Homo sapiens",
-        "chromosome": "17"
-    })
-    client.post("/genes/", json={
-        "gene_symbol": "Brca1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Mus musculus",
-        "chromosome": "11"
-    })
+    client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
+    client.post("/genes/", json=sample_gene_brac1_mus_musculus)
 
     # Search test gene by organism
     response = client.get("/genes/search/?organism=Homo")
@@ -215,21 +198,28 @@ def test_search_genes():
     assert len(results) == 1
     assert results[0]["organism"] == "Homo sapiens"
 
-def test_search_by_chromosome():
+def test_search_by_chromosome(sample_gene_brac1_mus_musculus):
     client.post("/genes/", json={
         "gene_symbol": "TP53",
         "gene_name": "Tumour Protein P53",
         "organism": "Homo sapiens",
         "chromosome": "17"
     })
-    client.post("/genes/", json={
-        "gene_symbol": "Brca1",
-        "gene_name": "Breast Cancer 1",
-        "organism": "Mus musculus",
-        "chromosome": "11"
-    })
+    client.post("/genes/", json=sample_gene_brac1_mus_musculus)
     response = client.get("/genes/search/?chromosome=17")
     assert response.status_code==200
     results = response.json()
     assert len(results) == 1
     assert all(g["chromosome"] == "17" for g in results)
+
+def test_gene_has_timestamps_on_creation():
+    gene_data = {
+        "gene_symbol": "EGFR",
+        "gene_name": "Epidermal Growth Factor Receptor",
+        "organism": "Homo sapiens"
+    }
+    response = client.post("/genes/", json=gene_data)
+    body = response.json()
+    assert "created_at" in body
+    assert "updated_at" in body
+    assert body["created_at"] is not None

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
+from datetime import datetime
 
 class GeneBase(BaseModel):
     gene_symbol: str = Field(..., max_length = 20,description="The unique symbol for the gene")
@@ -20,4 +21,6 @@ class GeneUpdate(BaseModel):
 
 class GeneResponse(GeneBase):
     id: int
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

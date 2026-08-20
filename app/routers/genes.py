@@ -27,6 +27,15 @@ def create_gene(gene: GeneCreate, db: Session = Depends(get_db)):
     db.refresh(db_gene)
     return db_gene
 
+@router.get("/search/", response_model=List[GeneResponse])
+def search_genes(organism: Optional[str] = None, chromosome: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(models.Gene)
+    if organism:
+        query = query.filter(models.Gene.organism.ilike(f"%{organism}%"))
+    if chromosome:
+        query = query.filter(models.Gene.chromosome == chromosome)
+    return query.offset(skip).limit(limit).all()
+
 @router.get("/{gene_id}", response_model=GeneResponse)
 def get_gene(gene_id: int, db: Session = Depends(get_db)):
     gene = db.query(models.Gene).filter(models.Gene.id == gene_id).first()
@@ -57,11 +66,4 @@ def delete_gene(gene_id: int, db: Session = Depends(get_db)):
     db.delete(gene)
     db.commit()
 
-@router.get("/search/", response_model=List[GeneResponse])
-def search_genes(organism: Optional[str] = None, chromosome: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    query = db.query(models.Gene)
-    if organism:
-        query = query.filter(models.Gene.organism.ilike(f"%{organism}%"))
-    if chromosome:
-        query = query.filter(models.Gene.chromosome == chromosome)
-    return query.offset(skip).limit(limit).all()
+
