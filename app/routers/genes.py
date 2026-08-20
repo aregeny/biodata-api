@@ -23,7 +23,7 @@ def create_gene(gene: GeneCreate, db: Session = Depends(get_db)):
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Gene symbol already exists")
+        raise HTTPException(status_code=409, detail="A gene with this symbol and organism already exists")
     db.refresh(db_gene)
     return db_gene
 

@@ -4,7 +4,7 @@ A RESTful backend service for storing and querying biological gene data.
 
 Built with FastAPI, PostgreSQL, Docker and AWS.
 
-Project development was AI-assisted.
+The development of this project was partially assisted with the use of AI tools to assist in development and review.
 
 ## Live API
 
@@ -24,7 +24,7 @@ Currently stopped. Contact me or see "Running Locally" to run the fullstack.
 - AWS (ECR, ECS with Fargate, RDS)
 
 ## Architecture
-- REST API build with FastAPI and Pydantic for request validation
+- REST API built with FastAPI and Pydantic for request validation
 - PostgreSQL database with SQLAlchemy ORM
 - Containerized with Docker, orchestrated locally with Docker Compose
 - Deployed to AWS ECS Fargate with RDS PostgreSQL
@@ -32,7 +32,7 @@ Currently stopped. Contact me or see "Running Locally" to run the fullstack.
 
 ## Running Locally 
 
-### Prerequisities
+### Prerequisites
 - Docker Desktop
 - Python 3.12
 
@@ -62,7 +62,7 @@ pytest tests/ -v
 
 ```bash
 curl -X POST "http://localhost:8000/genes/" \
-    -H "Content-Type: application/json" |
+    -H "Content-Type: application/json" \
     -d '{
         "gene_symbol" :  "BRCA1",
         "gene_name": "Breast Cancer Type 1 Susceptibility Protein",
@@ -79,9 +79,7 @@ curl -X POST "http://localhost:8000/genes/" \
 
 ## Future Improvements
 
-- Move credentials to AWS Secrets Manager
 - Implement an application load balancer with a fixed DNS to achieve a static public IP
 - Implement an application load balancer and a domain name for HTTPS implementation
 - Add authentication and authorization for users
-- Add pagination to list endpoints for better UI experience
 - Expand to additional biological data types.
