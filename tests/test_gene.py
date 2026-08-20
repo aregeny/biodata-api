@@ -34,6 +34,64 @@ def test_root():
     response = client.get("/")
     assert response.status_code == 200
 
+def test_duplicate_gene_symbol_same_organism_rejected():
+    # Arrange
+    gene_data = {
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    }
+    first_response = client.post("/genes/", json=gene_data)
+    assert first_response.status_code == 201  # sanity check the first insert worked
+
+    # Act
+    second_response = client.post("/genes/", json=gene_data)  # exact same data
+
+    # Assert
+    assert second_response.status_code == 409
+
+
+def test_same_gene_symbol_different_organism_allowed():
+    # Arrange
+    human_gene = {
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    }
+    client.post("/genes/", json=human_gene)
+
+    # Act
+    mouse_gene = {
+        "gene_symbol": "BRCA1",  # same symbol
+        "gene_name": "Breast Cancer 1",
+        "organism": "Mus musculus",  # different organism
+        "chromosome": "11"
+    }
+    response = client.post("/genes/", json=mouse_gene)
+
+    # Assert
+    assert response.status_code == 201  # should succeed, not conflict
+
+def test_failed_duplicate_insert_does_not_corrupt_table():
+    # Arrange
+    gene_data = {
+        "gene_symbol": "TP53",
+        "gene_name": "Tumor Protein P53",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    }
+    client.post("/genes/", json=gene_data)
+
+    # Act — attempt the duplicate, which should fail
+    client.post("/genes/", json=gene_data)
+
+    # Assert — exactly one row exists, not zero, not two
+    all_genes = client.get("/genes/").json()
+    matching = [g for g in all_genes if g["gene_symbol"] == "TP53" and g["organism"] == "Homo sapiens"]
+    assert len(matching) == 1
+
 def test_create_gene():
     gene_data = {
         "gene_symbol": "BRCA1",
@@ -54,6 +112,34 @@ def test_create_gene_with_missing_required_field():
     } 
     response = client.post("/genes/", json=gene_data)
     assert response.status_code == 422
+
+def test_update_gene_to_duplicate_organism_rejected():
+    # Arrange — two genes, same symbol, different organism
+    gene_a = {
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Homo sapiens",
+        "chromosome": "17"
+    }
+    gene_b = {
+        "gene_symbol": "BRCA1",
+        "gene_name": "Breast Cancer 1",
+        "organism": "Mus musculus",
+        "chromosome": "11"
+    }
+    client.post("/genes/", json=gene_a)
+    create_b_response = client.post("/genes/", json=gene_b)
+    gene_b_id = create_b_response.json()["id"]
+
+    # Act — try to update gene_b's organism to collide with gene_a
+    update_response = client.put(f"/genes/{gene_b_id}", json={"organism": "Homo sapiens"})
+
+    # Assert — the update was rejected
+    assert update_response.status_code == 409
+
+    # Assert — gene_b's organism is still what it originally was, not corrupted
+    get_response = client.get(f"/genes/{gene_b_id}")
+    assert get_response.json()["organism"] == "Mus musculus"
 
 def test_get_nonexistent_gene():
     response = client.get("/genes/9999")

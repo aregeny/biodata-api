@@ -3,6 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.database import get_db
 from app import models
 from app.schemas import GeneCreate, GeneResponse, GeneUpdate
@@ -40,7 +41,11 @@ def update_gene(gene_id: int, gene_update: GeneUpdate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Gene not found")
     for field, value in gene_update.model_dump(exclude_unset=True).items():
         setattr(gene, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Update would create a duplicate gene")
     db.refresh(gene)
     return gene
 
