@@ -72,7 +72,7 @@ curl -X POST "http://localhost:8000/genes/" \
     }'
 ```
 
-## Security Nodes
+## Security Notes
 - Credentials managed via environmental variables, never hardcoded
 - Test database isolated from development database
 - RDS accessible only from ECS Security Group
