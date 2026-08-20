@@ -7,7 +7,7 @@ class Gene(Base):
     __tablename__ = "genes"
 
     id = Column(Integer, primary_key=True, index=True)
-    gene_symbol = Column(String(20), index=True, nullable=False) #unique=True removed
+    gene_symbol = Column(String(20), index=True, nullable=False) #Not unique, because a gene symbol can be shared across multiple organisms.
     gene_name = Column(String(255), nullable=False)
     organism = Column(String(100), nullable=False)
     chromosome = Column(String(10), nullable=True)

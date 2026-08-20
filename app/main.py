@@ -1,10 +1,9 @@
 from fastapi import FastAPI
-from app.routers import genes #Day two addition
-# Day three addition
+from app.routers import genes
 from app.database import engine
 from app import models
 
-models.Base.metadata.create_all(bind=engine) # Day three addition
+models.Base.metadata.create_all(bind=engine) 
 
 app = FastAPI(
     title="Biodata API",
@@ -12,8 +11,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.include_router(genes.router) # Day two addition
-
+app.include_router(genes.router) 
 
 @app.get("/")
 def root():

@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 from app.main import app
-#Fixes due to Day Three additions
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import get_db, Base
@@ -50,7 +49,6 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-#Beyond is previous Day 2
 client = TestClient(app)
 
 def test_root():
@@ -64,30 +62,23 @@ def test_search_route_matches_before_id_route():
     # a working fallthrough, this would instead return 422
 
 def test_duplicate_gene_symbol_same_organism_rejected(sample_gene_brac1_homo_sapiens):
-    # Arrange
     
     first_response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
     assert first_response.status_code == 201  # sanity check the first insert worked
 
-    # Act
-    second_response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens)  # exact same data
+    second_response = client.post("/genes/", json=sample_gene_brac1_homo_sapiens) 
 
-    # Assert
     assert second_response.status_code == 409
 
 
 def test_same_gene_symbol_different_organism_allowed(sample_gene_brac1_homo_sapiens, sample_gene_brac1_mus_musculus):
-    # Arrange
     client.post("/genes/", json=sample_gene_brac1_homo_sapiens)
 
-    # Act
     response = client.post("/genes/", json=sample_gene_brac1_mus_musculus)
 
-    # Assert
     assert response.status_code == 201  # should succeed, not conflict
 
 def test_failed_duplicate_insert_does_not_corrupt_table():
-    # Arrange
     gene_data = {
         "gene_symbol": "TP53",
         "gene_name": "Tumor Protein P53",
@@ -96,10 +87,8 @@ def test_failed_duplicate_insert_does_not_corrupt_table():
     }
     client.post("/genes/", json=gene_data)
 
-    # Act — attempt the duplicate, which should fail
     client.post("/genes/", json=gene_data)
 
-    # Assert — exactly one row exists, not zero, not two
     all_genes = client.get("/genes/").json()
     matching = [g for g in all_genes if g["gene_symbol"] == "TP53" and g["organism"] == "Homo sapiens"]
     assert len(matching) == 1

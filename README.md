@@ -69,7 +69,7 @@ curl -X POST "http://localhost:8000/genes/" \
         "organism": "Homo sapiens",
         "chromosome": "17",
         "description": "Tumour suppressor gene involved in DNA double-strand break repair."
-    }
+    }'
 ```
 
 ## Security Nodes
